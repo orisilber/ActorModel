@@ -3,7 +3,7 @@ Created a simple implementation of an actor model in typescript using the js Bro
 
 #implementation
 First create the actor class
-```
+```typescript
 declare global { 
   interface RecipientMessageType {
     "MyActor": MyMessage;
@@ -30,11 +30,11 @@ export class MyActor extends Actor<MyMessage> {
 }
 ```
 Then we will call the hookup function
-```
+```typescript
 hookup("MyActor", new MyActor());
 ```
 Lastly we will call the lookup function and use the ActorHanlder methods
-```
+```typescript
 const actorHandler = lookup("MyActor");
 
 actorHandler.handle((event) => {console.log(event)});
