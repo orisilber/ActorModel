@@ -1,7 +1,7 @@
 # ActorModel
 Created a simple implementation of an actor model in typescript using the js BroadcastChannel API, allowing for easier communication between web workers
 
-#implementation
+# Implementation
 First create the actor class
 ```typescript
 declare global { 
