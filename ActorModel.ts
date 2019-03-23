@@ -9,32 +9,33 @@ declare global {
 
 type ValidRecipientName = keyof RecipientMessageType;
 
+export type BasicMessageRecipient = ValidRecipientName | 'SELF';
 export interface BasicMessage {
-    recipient: ValidRecipientName | null;
+    recipient: BasicMessageRecipient;
+    message: any;
 }
 
 
 interface ActorContract<T> {
-    cache: {};
-    channel: BroadcastChannel;
+    channel?: BroadcastChannel;
 
     init(): void;
     onMessage(message: T): Promise<T>;
-    messageCallback(message: BasicMessage, recipient: string): void;
+    // messageCallback(message: BasicMessage, recipient: string): void;
 }
 
 export abstract class Actor<T extends BasicMessage> {
-    cache: any = {};
-
     init() { };
     abstract onMessage(message: T): Promise<T>;
 
+    /**
+     * INTERNAL METHOD!!!
+     * do not use this function it is intended for internal use by the library 
+     */
     protected messageCallback(message: T, recipient: string): void {
-        if (typeof (recipient) === "string") {
-            const bcc = new BroadcastChannel(recipient);
-            bcc.postMessage(message);
-            bcc.close();
-        }
+        const bcc = new BroadcastChannel(recipient);
+        bcc.postMessage(message);
+        bcc.close();
     }
 }
 
@@ -48,15 +49,12 @@ export function hookup<ActorName extends ValidRecipientName>(
     actor.channel = new BroadcastChannel(recipientName);
 
     actor.channel.onmessage = (event) => {
-        if (event.data.getCachedResponse === true) {
-            event.data.isReturn = true;
-            actor.messageCallback(actor.cache as BasicMessage, event.data.recipient);
-        }
-        else if(event.data.isReturn !== true) {
+        if (event.data.isReturn !== true) {
             actor.onMessage(event.data as RecipientMessageType[ActorName]).then((response: BasicMessage) => {
                 //@ts-ignore
                 response.isReturn = true;
-                actor.messageCallback(response, response.recipient || actor.channel.name);
+                //@ts-ignore
+                actor.messageCallback(response, response.recipient === 'SELF' ? actor.channel.name : response.recipient);
             })
         }
     }
@@ -74,20 +72,7 @@ export function lookup<ActorName extends ValidRecipientName>(
 ): actorHandler<ActorName> {
     return {
         handle: (cb: (event: BasicMessage) => void) => {
-            const privateChannelName = newGuid();
-            const privateBcc = new BroadcastChannel(privateChannelName);
             const bcc = new BroadcastChannel(recipientName);
-            const message = {
-                recipient: privateChannelName,
-                getCachedResponse: true,
-            };
-            privateBcc.onmessage = (event: any) => {
-                if (event.data.isReturn === true) {
-                    privateBcc.close();
-                    cb(event.data);
-                }
-            };
-            bcc.postMessage(message);
             bcc.onmessage = (event: any) => {
                 if (event.data.isReturn === true) {
                     cb(event.data);
